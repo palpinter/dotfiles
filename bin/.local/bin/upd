@@ -1,0 +1,6 @@
+#/bin/bash
+
+sudo pacman -Syyu
+yay -Syu --aur
+
+exit 0

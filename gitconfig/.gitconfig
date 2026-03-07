@@ -1,0 +1,41 @@
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+[includeIf "gitdir:/home/palpinter/Projektek/Orgware/"]
+	path = /home/palpinter/.config/gitconfig/pinter-pal-orgware
+[includeIf "gitdir:/home/palpinter/.dotfiles/"]
+	path = /home/palpinter/.config/gitconfig/pinter-pal-orgware
+[includeIf "gitdir:/home/palpinter/Projektek/Palpinter/"]
+	path = /home/palpinter/.config/gitconfig/palpinter
+[core]
+	editor = nvim
+	excludesfile = /home/palpinter/.gitignore_global
+[init]
+	defaultBranch = main
+[user]
+	name = Pál Pintér
+	email = pal@palpinter.com
+[pull]
+	rebase = false
+
+# Conditional Git configurations based on directory
+[includeIf "gitdir:~/Kódtár/aktiv/github-pal-pinter/"]
+    path = ~/.config/git/github-pal-pinter
+[includeIf "gitdir:~/Kódtár/aktiv/github-pinter-pal-orgware/"]
+    path = ~/.config/git/github-pinter-pal-orgware
+[includeIf "gitdir:~/Kódtár/aktiv/gitlab-pal-pinter/"]
+    path = ~/.config/git/gitlab-pal-pinter
+[includeIf "gitdir:~/Kódtár/aktiv/gitlab-pinter-pal/"]
+    path = ~/.config/git/gitlab-pinter-pal
+
+# Conditional Git configurations based on directory
+[includeIf "gitdir:~/Kódtár/aktiv/github-pal-pinter/"]
+    path = ~/.config/git/github-pal-pinter
+[includeIf "gitdir:~/Kódtár/aktiv/github-pinter-pal-orgware/"]
+    path = ~/.config/git/github-pinter-pal-orgware
+[includeIf "gitdir:~/Kódtár/aktiv/gitlab-pal-pinter/"]
+    path = ~/.config/git/gitlab-pal-pinter
+[includeIf "gitdir:~/Kódtár/aktiv/gitlab-pinter-pal/"]
+    path = ~/.config/git/gitlab-pinter-pal

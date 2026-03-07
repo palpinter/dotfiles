@@ -1,0 +1,6 @@
+[user]
+	email = pal@palpinter.com
+	name = palpinter
+[core]
+	sshCommand = "ssh -i ~/.ssh/id_palpinter"
+

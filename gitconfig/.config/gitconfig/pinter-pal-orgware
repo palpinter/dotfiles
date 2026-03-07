@@ -1,0 +1,5 @@
+[user]
+	email = pinter.pal@orgware.hu
+	name = pinter-pal-orgware
+[core]
+	sshCommand = "ssh -i ~/.ssh/id_orgware"

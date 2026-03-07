@@ -1,0 +1,89 @@
+# /home/palpinter/.config/tmuxinator/teszt.yml
+
+name: oc-dev
+root: ~/Projektek/Orgware/OrgwareConnect
+
+# Optional tmux socket
+# socket_name: foo
+
+# Note that the pre and post options have been deprecated and will be replaced by
+# project hooks.
+
+# Project hooks
+
+# Runs on project start, always
+# on_project_start: volta install node@14 && volta install npm@6
+
+# Run on project start, the first time
+# on_project_first_start: source ~/Projektek/Orgware/oc-publish/bin/activate
+
+
+# Run on project start, after the first time
+# on_project_restart: command
+
+# Run on project exit ( detaching from tmux session )
+# on_project_exit: volta install node@20 && volta install npm@10
+
+# Run on project stop
+# on_project_stop: volta install node@20 && volta install npm@10
+
+# Runs in each window and pane before window/pane specific commands. Useful for setting up interpreter versions.
+# pre_window: rbenv shell 2.0.0-p247
+
+# Pass command line options to tmux. Useful for specifying a different tmux.conf.
+# tmux_options: -f ~/.tmux.mac.conf
+
+# Change the command to call tmux. This can be used by derivatives/wrappers like byobu.
+# tmux_command: byobu
+
+# Specifies (by name or index) which window will be selected on project startup. If not set, the first window is used.
+# startup_window: editor
+
+# Specifies (by index) which pane of the specified window will be selected on project startup. If not set, the first pane is used.
+# startup_pane: 1
+
+# Controls whether the tmux session should be attached to automatically. Defaults to true.
+# attach: false
+
+enable_pane_titles: true
+pane_title_position: top
+
+windows:
+  - oc:
+      layout: '3157,190x57,0,0[190x36,0,0,0,190x20,0,37{94x20,0,37,4,95x20,95,37,5}]'
+      # Synchronize all panes of this window, can be enabled before or after the pane commands run.
+      # 'before' represents legacy functionality and will be deprecated in a future release, in favour of 'after'
+      # synchronize: after
+      panes:
+        - my-hr:
+            - cd my-hr
+            - npm run dev-pp
+            - cls
+        - application:
+            - cd application
+            - BROWSER=none npm start
+        - git:
+            - git pull
+  - logs:
+      layout: even-vertical
+      panes:
+        - oc-jdapi-1:
+            - ssh dev-server
+            - docker logs -f pp-jdapi-1
+        - oc-jdapi-2:
+            - ssh dev-server
+            - docker logs -f pp-jdapi-2
+  - build:
+      layout: main-vertical
+      panes:
+        - build:
+            - source ~/Projektek/Orgware/oc-publish/bin/activate
+            - cd bin
+            - source ~/Projektek/oc-publish/bin/activate
+            - clear
+  - watchtower:
+      layout: main-vertical
+      panes:
+        - watchtower:
+            - ssh dev-server
+            - docker logs -f watchtower 2>&1 | grep -v -e "Session" -e "Unable" -e "head request"

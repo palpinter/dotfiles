@@ -1,0 +1,72 @@
+// Zellij Nord color scheme configuration with leader key
+// Place this file at: ~/.config/zellij/config.kdl
+
+themes {
+    nord {
+        fg "#D8DEE9"        // fő szöveg szín (világos kék-fehér)
+        bg "#2E3440"        // háttér (sötét kék-szürke)
+        black "#3B4252"     // fekete (sötétebb szürke)
+        red "#BF616A"       // piros
+        green "#A3BE8C"     // zöld  
+        yellow "#EBCB8B"    // sárga
+        blue "#81A1C1"      // kék
+        magenta "#B48EAD"   // magenta/lila
+        cyan "#88C0D0"      // cián/világos kék
+        white "#E5E9F0"     // fehér (nagyon világos)
+        orange "#D08770"    // narancs
+    }
+}
+
+theme "nord"
+
+ui {
+    pane_frames {
+        rounded_corners false
+    }
+}
+
+default_layout "compact"
+
+keybinds {
+    normal {
+        // LEADER key: Ctrl+space
+        bind "Ctrl Space" { SwitchToMode "tmux"; }
+        
+        // Global tab navigáció
+        bind "Shift Left" { GoToPreviousTab; }
+        bind "Shift Right" { GoToNextTab; }
+        
+        // Pane navigáció nyilakkal
+        bind "Alt Left" { MoveFocus "Left"; }
+        bind "Alt Right" { MoveFocus "Right"; }
+        bind "Alt Up" { MoveFocus "Up"; }
+        bind "Alt Down" { MoveFocus "Down"; }
+    }
+    
+    tmux {
+        // Visszatérés normal módba
+        bind "Esc" { SwitchToMode "Normal"; }
+        bind "q" { SwitchToMode "Normal"; }
+        
+        // Lock mód
+        bind "g" { SwitchToMode "Locked"; }
+        
+        // Horizontal split (új pane jobbra)
+        bind "|" { NewPane "Right"; SwitchToMode "Normal"; }
+        
+        // Vertical split (új pane alá)
+        bind "-" { NewPane "Down"; SwitchToMode "Normal"; }
+        
+        // Új tab létrehozás
+        bind "c" { NewTab; SwitchToMode "Normal"; }
+        
+        // Tab átnevezés
+        bind "r" { SwitchToMode "RenameTab"; TabNameInput 0; }
+        
+        // Session detach
+        bind "d" { Detach; }
+        
+        // Kill/Quit session (EXITED státusz)
+        bind "k" { Quit; }
+    }
+}

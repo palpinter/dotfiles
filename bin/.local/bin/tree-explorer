@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+
+# Script neve: tree-explorer
+# Leírás: Tree struktúra és fájltartalmak exportálása Markdown formátumba
+# Bash-kompatibilis verzió
+
+# Kimeneti fájl neve
+OUTPUT_FILE="project_documentation.md"
+
+# Kizárandó könyvtárak és fájlok (bővíthető)
+EXCLUDE_DIRS=(".git" "node_modules" ".venv" "__pycache__" ".DS_Store" "dist" "build" "coverage" ".next" ".nuxt")
+EXCLUDE_FILES=("*.pyc" "*.pyo" "*.class" "*.o" "*.so" "*.dylib" "*.exe" "*.dll")
+
+# Maximális fájlméret bájtokban (alapértelmezett: 1MB)
+MAX_FILE_SIZE=$((1024 * 1024))
+
+# Színkódok a konzol kimenethez
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Tree struktúra generálása
+generate_tree() {
+    local dir="${1:-.}"
+    local prefix="${2}"
+    local is_last="${3}"
+    
+    # Fájlok és könyvtárak listázása
+    local items=()
+    while IFS= read -r -d '' item; do
+        local basename=$(basename "$item")
+        local skip=0
+        
+        # Kizárandó elemek ellenőrzése
+        for exclude in "${EXCLUDE_DIRS[@]}"; do
+            if [[ "$basename" == "$exclude" ]]; then
+                skip=1
+                break
+            fi
+        done
+        
+        [[ $skip -eq 1 ]] && continue
+        items+=("$item")
+    done < <(find "$dir" -maxdepth 1 -mindepth 1 -print0 2>/dev/null | sort -z)
+    
+    # Rendezés: könyvtárak először, majd fájlok
+    local dirs=()
+    local files=()
+    for item in "${items[@]}"; do
+        if [[ -d "$item" ]]; then
+            dirs+=("$item")
+        elif [[ -f "$item" ]]; then
+            files+=("$item")
+        fi
+    done
+    
+    # Összefűzés: könyvtárak + fájlok
+    local sorted_items=("${dirs[@]}" "${files[@]}")
+    local count=${#sorted_items[@]}
+    local index=0
+    
+    for item in "${sorted_items[@]}"; do
+        index=$((index + 1))
+        local basename=$(basename "$item")
+        local is_last_item=0
+        [[ $index -eq $count ]] && is_last_item=1
+        
+        # Tree karakter kiválasztása
+        if [[ $is_last_item -eq 1 ]]; then
+            echo -n "${prefix}└── "
+            local new_prefix="${prefix}    "
+        else
+            echo -n "${prefix}├── "
+            local new_prefix="${prefix}│   "
+        fi
+        
+        if [[ -d "$item" ]]; then
+            echo "${basename}/"
+            generate_tree "$item" "$new_prefix" $is_last_item
+        else
+            echo "$basename"
+        fi
+    done
+}
+
+# Fájl olvashatóságának ellenőrzése
+is_text_file() {
+    local file="$1"
+    
+    # Üres fájl ellenőrzése
+    [[ ! -s "$file" ]] && return 1
+    
+    # Fájlméret ellenőrzése (macOS és Linux kompatibilis)
+    local file_size
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        file_size=$(stat -f%z "$file" 2>/dev/null)
+    else
+        file_size=$(stat -c%s "$file" 2>/dev/null)
+    fi
+    [[ -z "$file_size" ]] && return 1
+    [[ $file_size -gt $MAX_FILE_SIZE ]] && return 1
+    
+    # Bináris fájl ellenőrzése
+    if file "$file" 2>/dev/null | grep -q "text\|ASCII\|UTF"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Fájl kiterjesztés lekérése
+get_file_extension() {
+    local filename="$1"
+    echo "${filename##*.}"
+}
+
+# Fájltartalmak összegyűjtése
+collect_file_contents() {
+    local dir="${1:-.}"
+    local files_processed=0
+    local files_skipped=0
+    
+    echo -e "\n${GREEN}Fájltartalmak feldolgozása...${NC}"
+    
+    # Fájlok rekurzív keresése
+    while IFS= read -r -d '' file; do
+        # Relatív útvonal
+        local rel_path="${file#$dir/}"
+        [[ "$rel_path" == "$file" ]] && rel_path="${file#./}"
+        
+        # Kizárandó könyvtárak ellenőrzése
+        local skip=0
+        for exclude in "${EXCLUDE_DIRS[@]}"; do
+            if [[ "$rel_path" == *"/$exclude/"* ]] || [[ "$rel_path" == "$exclude/"* ]]; then
+                skip=1
+                break
+            fi
+        done
+        [[ $skip -eq 1 ]] && continue
+        
+        # Kimeneti fájl kihagyása
+        [[ "$(basename "$rel_path")" == "$OUTPUT_FILE" ]] && continue
+        
+        if is_text_file "$file"; then
+            echo -e "\n## Fájl: \`$rel_path\`" >> "$OUTPUT_FILE"
+            echo -e "" >> "$OUTPUT_FILE"
+            
+            # Fájl kiterjesztés meghatározása a szintaxis kiemeléshez
+            local ext=$(get_file_extension "$file")
+            local lang=""
+            case "$ext" in
+                sh|bash|zsh) lang="bash" ;;
+                py) lang="python" ;;
+                js) lang="javascript" ;;
+                ts) lang="typescript" ;;
+                jsx|tsx) lang="jsx" ;;
+                java) lang="java" ;;
+                c|h) lang="c" ;;
+                cpp|cc|cxx|hpp) lang="cpp" ;;
+                cs) lang="csharp" ;;
+                go) lang="go" ;;
+                rs) lang="rust" ;;
+                rb) lang="ruby" ;;
+                php) lang="php" ;;
+                swift) lang="swift" ;;
+                kt) lang="kotlin" ;;
+                r) lang="r" ;;
+                sql) lang="sql" ;;
+                html|htm) lang="html" ;;
+                css) lang="css" ;;
+                scss|sass) lang="scss" ;;
+                xml) lang="xml" ;;
+                json) lang="json" ;;
+                yaml|yml) lang="yaml" ;;
+                toml) lang="toml" ;;
+                md) lang="markdown" ;;
+                tex) lang="latex" ;;
+                *) lang="" ;;
+            esac
+            
+            echo "\`\`\`$lang" >> "$OUTPUT_FILE"
+            cat "$file" >> "$OUTPUT_FILE"
+            echo "" >> "$OUTPUT_FILE"
+            echo "\`\`\`" >> "$OUTPUT_FILE"
+            
+            files_processed=$((files_processed + 1))
+            echo -e "${GREEN}✓${NC} $rel_path"
+        else
+            files_skipped=$((files_skipped + 1))
+            echo -e "${YELLOW}⊘${NC} $rel_path (bináris vagy túl nagy fájl)"
+        fi
+    done < <(find "$dir" -type f -print0 2>/dev/null)
+    
+    echo -e "\n${GREEN}Összesen feldolgozva: $files_processed fájl${NC}"
+    echo -e "${YELLOW}Kihagyva: $files_skipped fájl${NC}"
+}
+
+# Főprogram
+main() {
+    echo -e "${GREEN}═══════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  Projekt Dokumentáció Generátor${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════${NC}\n"
+    
+    local start_dir="${1:-.}"
+    
+    # Könyvtár ellenőrzése
+    if [[ ! -d "$start_dir" ]]; then
+        echo -e "${RED}Hiba: '$start_dir' nem létező könyvtár!${NC}"
+        exit 1
+    fi
+    
+    # Kimeneti fájl inicializálása
+    echo "# Projekt Dokumentáció" > "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+    echo "Generálva: $(date '+%Y-%m-%d %H:%M:%S')" >> "$OUTPUT_FILE"
+    echo "Könyvtár: $(realpath "$start_dir" 2>/dev/null || echo "$start_dir")" >> "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+    
+    # Tree struktúra hozzáadása
+    echo -e "${GREEN}Tree struktúra generálása...${NC}"
+    echo "## Könyvtárstruktúra" >> "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+    echo "\`\`\`" >> "$OUTPUT_FILE"
+    echo "./" >> "$OUTPUT_FILE"
+    generate_tree "$start_dir" "" 0 >> "$OUTPUT_FILE"
+    echo "\`\`\`" >> "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+    
+    # Fájltartalmak hozzáadása
+    echo "## Fájltartalmak" >> "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+    collect_file_contents "$start_dir"
+    
+    echo -e "\n${GREEN}═══════════════════════════════════════════${NC}"
+    echo -e "${GREEN}✓ Dokumentáció sikeresen létrehozva:${NC}"
+    echo -e "  ${GREEN}$OUTPUT_FILE${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════${NC}"
+}
+
+# Script futtatása
+main "$@"

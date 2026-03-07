@@ -1,0 +1,26 @@
+# /home/palpinter/.config/tmuxinator/teszt.yml
+
+name: cli-dev
+root: ~/Projektek/Orgware
+
+enable_pane_titles: true
+pane_title_position: top
+
+windows:
+  - cli:
+      layout: '3157,190x57,0,0[190x36,0,0,0,190x20,0,37{94x20,0,37,4,95x20,95,37,5}]'
+      # Synchronize all panes of this window, can be enabled before or after the pane commands run.
+      # 'before' represents legacy functionality and will be deprecated in a future release, in favour of 'after'
+      # synchronize: after
+      panes:
+        - cli-dev:
+          - cd OcCliTS
+          - npm run dev
+        - cli-git:
+          - cd OcCliTS
+          - git status
+        - oc-test:
+          - cd OrgwareConnectTS
+        - oc-dev:
+          - cd OrgwareConnectTS
+          - npm run test
