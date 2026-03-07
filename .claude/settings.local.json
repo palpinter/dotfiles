@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree -L 2 -a)",
+      "Bash(find . -maxdepth 3 -type f ( -name \"*.sh\" -o -name \"install*\" -o -name \"setup*\" ))"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
