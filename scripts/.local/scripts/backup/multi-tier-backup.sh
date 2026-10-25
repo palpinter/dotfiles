@@ -5,6 +5,10 @@ set -uo pipefail
 HOSTNAME=$(hostname)
 BACKUP_LOG="$HOME/.local/backups/logs/backup-$(date +%Y%m%d_%H%M%S).log"
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10)
+NAS_MOUNT="/srv/nas"            # QNAP 192.168.50.30:/Backup – mounted (systemd automount) on gadamer only
+NAS_ROOT="$NAS_MOUNT/backups"
+NAS_KEEP=30                     # daily snapshots to keep per machine
+XDG_DIRS=(Dokumentumok Képek Videók Zenék)
 RC=0
 
 log() { echo "$*" | tee -a "$BACKUP_LOG"; }
@@ -32,22 +36,43 @@ else
     log "❌ VPS not reachable"; RC=1
 fi
 
-# Tier 2: NAS
+# Tier 2: NAS – only on the machine that mounts the QNAP. The XDG folders there are the
+# Syncthing copies of every machine, so one NAS node covers the whole fleet's documents.
 log ""
 log "🏠 Tier 2: NAS Backup"
-NAS_TARGET="/mnt/nas/backups/clients/$HOSTNAME/Kódtár/"
-if [ "$HOSTNAME" = "siddhartha" ]; then
-    if mountpoint -q /mnt/nas; then
-        rsync -az --delete --mkpath ~/Kódtár/ "$NAS_TARGET" >> "$BACKUP_LOG" 2>&1 \
-            && log "✅ Local NAS backup completed" || { log "❌ Local NAS backup failed"; RC=1; }
-    else
-        log "⚠️  /mnt/nas is not mounted – skipped"
+if mountpoint -q "$NAS_MOUNT"; then
+    TODAY=$(date +%Y-%m-%d)
+    SNAP_BASE="$NAS_ROOT/snapshots/$HOSTNAME"
+    SNAP="$SNAP_BASE/$TODAY"
+    LATEST="$SNAP_BASE/latest"
+    mkdir -p "$SNAP"
+    LINK=()
+    if [ -d "$LATEST" ] && [ "$(readlink -f "$LATEST")" != "$(readlink -f "$SNAP")" ]; then
+        LINK=(--link-dest="$(readlink -f "$LATEST")/")     # unchanged files become hard links → daily history, little space
     fi
-elif ssh "${SSH_OPTS[@]}" siddhartha "mountpoint -q /mnt/nas" 2>/dev/null; then
-    rsync -az --delete --mkpath ~/Kódtár/ "siddhartha:$NAS_TARGET" >> "$BACKUP_LOG" 2>&1 \
-        && log "✅ Remote NAS backup completed" || { log "❌ Remote NAS backup failed"; RC=1; }
+    # The share squashes every writer to one uid: do not try to preserve owner/group (no -o/-g, no -a)
+    nas_sync() {  # nas_sync <dir under $HOME> [rsync excludes...]
+        local src="$1"; shift
+        [ -d "$HOME/$src" ] || { log "  ⏭  ~/$src not present"; return 0; }
+        if rsync -rltD --delete --delete-excluded "${LINK[@]}" "$@" \
+            "$HOME/$src/" "$SNAP/$src/" >> "$BACKUP_LOG" 2>&1; then
+            log "  ✅ $src"
+        else
+            log "  ❌ $src failed (see log)"; RC=1
+        fi
+    }
+    nas_sync Kódtár --exclude='node_modules/' --exclude='target/' --exclude='build/' --exclude='dist/' --exclude='.venv/'
+    for d in "${XDG_DIRS[@]}"; do
+        nas_sync "$d" --exclude='.stfolder/' --exclude='.stversions/' --exclude='.syncthing*'
+    done
+    ln -sfn "$TODAY" "$LATEST"
+    # retention: keep the newest $NAS_KEEP daily snapshots
+    find "$SNAP_BASE" -mindepth 1 -maxdepth 1 -type d -name '20??-??-??' | sort | head -n -"$NAS_KEEP" | while read -r old; do
+        rm -rf "$old" && log "  🗑  pruned snapshot $(basename "$old")"
+    done
+    log "✅ NAS snapshot: $SNAP"
 else
-    log "⚠️  NAS not available"
+    log "ℹ️  No NAS mounted on this machine – gadamer snapshots its Syncthing copies of the XDG folders for everyone"
 fi
 
 log ""
