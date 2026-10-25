@@ -16,7 +16,7 @@ if ! grep -q '^machines/\*\* filter=git-crypt' "$VAULT_DIR/.gitattributes" 2>/de
     echo "❌ machines/** is not covered by git-crypt in .gitattributes – private keys would be stored in plain text"
     exit 1
 fi
-if [ ! -d "$(git -C "$VAULT_DIR" rev-parse --git-dir)/git-crypt/keys" ]; then
+if [ ! -d "$(git -C "$VAULT_DIR" rev-parse --absolute-git-dir)/git-crypt/keys" ]; then
     echo "❌ Vault is locked – run: git -C $VAULT_DIR crypt unlock   (needs the vault GPG key)"
     exit 1
 fi
