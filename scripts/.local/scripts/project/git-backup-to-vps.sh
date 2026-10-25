@@ -1,7 +1,7 @@
 #!/bin/bash
 # Git Backup to VPS - Unified account-based backup system
 
-set -e
+set -uo pipefail
 
 VPS_HOST="murakami"
 KODTAR_BASE="$HOME/Kódtár"
@@ -67,8 +67,11 @@ detect_conflicts() {
     while IFS= read -r branch; do
         [[ -z "$branch" ]] && continue
 
-        local local_commit=$(git rev-parse "$branch" 2>/dev/null || continue)
-        local vps_commit=$(git rev-parse "vps-backup/$branch" 2>/dev/null || echo "")
+        # --verify -q prints nothing for an unknown ref (plain rev-parse echoes the name back → false conflicts)
+        local local_commit vps_commit
+        local_commit=$(git rev-parse --verify -q "$branch" 2>/dev/null || true)
+        vps_commit=$(git rev-parse --verify -q "vps-backup/$branch" 2>/dev/null || true)
+        [[ -n "$local_commit" ]] || continue
 
         if [[ -n "$vps_commit" && "$local_commit" != "$vps_commit" ]]; then
             # Check if branches have diverged (both have unique commits)
@@ -118,7 +121,7 @@ backup_repository() {
         show_status "INFO" "$account/$repo_name" "Setting up VPS backup remote"
 
         # Create bare repository on VPS
-        if ssh "$VPS_HOST" "~/.local/scripts/project/vps-create-repo.sh '$account' '$repo_name'" &>/dev/null; then
+        if ssh -n "$VPS_HOST" "~/.local/scripts/project/vps-create-repo.sh '$account' '$repo_name'" &>/dev/null; then
             # Add VPS remote
             git remote add vps-backup "$VPS_HOST:/var/git/$account/$repo_name.git"
             log "SETUP: $account/$repo_name - VPS remote added"
@@ -135,12 +138,18 @@ backup_repository() {
     fi
 
     # Backup to VPS
-    if git push vps-backup --mirror --quiet 2>/dev/null; then
+    # Fast-forward only (no --mirror): a clone that is behind another machine's push must not rewind the mirror
+    local out
+    if out=$(git push vps-backup --all 2>&1) && out="$out"$'\n'$(git push vps-backup --tags 2>&1); then
         show_status "OK" "$account/$repo_name" "Backed up to VPS"
         log "BACKUP: $account/$repo_name - success"
         return 0
+    elif echo "$out" | grep -q "rejected"; then
+        show_status "WARN" "$account/$repo_name" "VPS has newer commits on some branch (pushed from another machine) – pull first"
+        log "BACKUP_BEHIND: $account/$repo_name"
+        return 0
     else
-        show_status "ERROR" "$account/$repo_name" "Backup failed"
+        show_status "ERROR" "$account/$repo_name" "Backup failed: $(echo "$out" | tail -1)"
         log "BACKUP_ERROR: $account/$repo_name"
         return 1
     fi
@@ -170,20 +179,20 @@ backup_all_repositories() {
     # Find all Git repositories
     while IFS= read -r repo_path; do
         [[ -z "$repo_path" ]] && continue
-        ((stats_total++))
+        stats_total=$((stats_total + 1))
 
-        if backup_repository "$repo_path"; then
-            ((stats_backed_up++))
+        if backup_repository "$repo_path" < /dev/null; then
+            stats_backed_up=$((stats_backed_up + 1))
         else
             local last_status=$(tail -1 "$LOGFILE" | grep -o 'CONFLICT\|BACKUP_ERROR' || echo "ERROR")
             if [[ "$last_status" == "CONFLICT" ]]; then
-                ((stats_conflicts++))
+                stats_conflicts=$((stats_conflicts + 1))
             else
-                ((stats_errors++))
+                stats_errors=$((stats_errors + 1))
             fi
         fi
 
-    done < <(find "$target_dir" -name ".git" -type d | sed 's|/.git$||' | sort)
+    done < <(find "$target_dir" -maxdepth 3 -name ".git" -type d | sed 's|/.git$||' | sort)
 
     echo ""
     echo "📊 Backup Summary:"
