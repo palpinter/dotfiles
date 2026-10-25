@@ -19,15 +19,12 @@ log "Machine: $HOSTNAME"
 log "Date: $(date)"
 log ""
 
-# Tier 1: murakami – Git mirror of every repository under ~/Kódtár/aktiv (bare repos in /var/git/<account>/).
-# The working trees are not rsynced any more: everything committed is in the mirror, documents travel via Syncthing.
-log "📡 Tier 1: VPS – Git mirror"
+# Tier 1: Git. Everything pushed to GitHub/GitLab is mirrored into Forgejo on murakami (pull mirrors, 8 h);
+# repos without a public remote are pushed to Forgejo (org "local"). This step only checks and pushes those.
+log "📡 Tier 1: Git (Forgejo mirrors on murakami)"
 if ssh "${SSH_OPTS[@]}" murakami true 2>/dev/null; then
-    if "$HOME/.local/scripts/project/git-backup-to-vps.sh" >> "$BACKUP_LOG" 2>&1; then
-        log "✅ Git mirror on murakami up to date ($(grep -c 'BACKUP: .* - success' "$BACKUP_LOG") repos)"
-    else
-        log "❌ Git mirror reported problems (conflicts or errors – see log)"; RC=1
-    fi
+    if "$HOME/.local/scripts/project/git-repo-status.sh" 2>&1 | tee -a "$BACKUP_LOG" | grep -E '^(⚠️|❌|📊)' ; then :; fi
+    if [ "${PIPESTATUS[0]}" -eq 0 ]; then log "✅ Git tier OK"; else log "❌ Git tier: a push to Forgejo failed (see log)"; RC=1; fi
     log "📁 Documents are synced to murakami by Syncthing (real-time, versioned there)"
 else
     log "❌ VPS not reachable"; RC=1
