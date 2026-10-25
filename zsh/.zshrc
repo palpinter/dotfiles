@@ -89,38 +89,8 @@ case ":$PATH:" in
 esac
 # pnpm end
 
+# Claude Code native binary
+export PATH="$HOME/.local/bin:$PATH"
+
 # Development Environment Manager
-# ===============================
-
-# Add scripts to PATH
-export PATH="$HOME/.local/scripts:$PATH"
-
-# Load GTD aliases
-if [ -f "$HOME/.local/scripts/configs/shell/gtd-aliases.sh" ]; then
-    source "$HOME/.local/scripts/configs/shell/gtd-aliases.sh"
-fi
-
-# Quick functions
-sod() {
-    echo "🌅 Nap Kezdete"
-    echo "==============="
-    echo "📧 Beérkező: $([ -f "$HOME/Dokumentumok/1_Munkaterület/Területek/GTD/beerkezo.md" ] && grep -c "^- \[ \]" "$HOME/Dokumentumok/1_Munkaterület/Területek/GTD/beerkezo.md" 2>/dev/null || echo "0") elem"
-    echo "💻 Számítógépes feladatok:"
-    lc | head -5
-    echo ""
-    echo "🎯 Mai fókusz:"
-    echo "1. Beérkező feldolgozása ha > 5 elem"
-    echo "2. Prioritásos feladatok áttekintése"
-    echo "3. Legfontosabb projekttel kezdés"
-}
-
-# Status dashboard
-dash() {
-    echo "📊 Fejlesztői Környezet Állapota"
-    echo "================================="
-    echo "🖥️  Gép: $(hostname)"
-    echo "📅 Dátum: $(date '+%Y-%m-%d %H:%M')"
-    echo "📧 GTD Beérkező: $([ -f "$HOME/Dokumentumok/1_Munkaterület/Területek/GTD/beerkezo.md" ] && grep -c "^- \[ \]" "$HOME/Dokumentumok/1_Munkaterület/Területek/GTD/beerkezo.md" 2>/dev/null || echo "0") elem"
-    echo "📡 Syncthing: $(systemctl --user is-active syncthing)"
-    echo "🔄 Utolsó mentés: $(ls -t ~/.local/backups/logs/backup-*.log 2>/dev/null | head -1 | xargs stat -c %y 2>/dev/null | cut -d' ' -f1 || echo "Soha")"
-}
+[ -f "$HOME/.config/dev-env/shell.zsh" ] && source "$HOME/.config/dev-env/shell.zsh"

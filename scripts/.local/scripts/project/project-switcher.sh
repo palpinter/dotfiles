@@ -1,58 +1,21 @@
 #!/bin/bash
-# Project switcher with fuzzy finder
-
-set -e
+# Print the path of a project chosen with fzf (used by the `p` shell function)
+set -euo pipefail
 
 PROJECTS_DIR="$HOME/Kódtár/aktiv"
-DOCS_DIR="$HOME/Dokumentumok/1_Munkaterület/Projektek"
+DOCS_DIR="$HOME/Dokumentumok/02_Projektek"
 
-# Function to list all projects
 list_projects() {
-    echo "Git Projects:"
-    find "$PROJECTS_DIR" -mindepth 2 -maxdepth 2 -type d 2>/dev/null | sed "s|$PROJECTS_DIR/||" | sort
-
-    if [ -d "$DOCS_DIR" ]; then
-        echo "Doc Projects:"
-        find "$DOCS_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed "s|$DOCS_DIR/||" | sort
-    fi
+    find "$PROJECTS_DIR" -mindepth 2 -maxdepth 2 -type d 2>/dev/null | sort
+    [ -d "$DOCS_DIR" ] && find "$DOCS_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort
+    return 0
 }
 
-# Use fzf if available, otherwise simple selection
-if command -v fzf &> /dev/null; then
-    PROJECT=$(list_projects | fzf --prompt="Select project: ")
+if command -v fzf &>/dev/null; then
+    PROJECT=$(list_projects | fzf --prompt="Projekt: " --query="${1:-}" --select-1) || exit 1
 else
-    echo "Available projects:"
-    list_projects
-    echo -n "Enter project name: "
-    read PROJECT
+    PROJECT=$(list_projects | grep -i -- "${1:-.}" | head -1)
 fi
 
-if [ -z "$PROJECT" ]; then
-    echo "No project selected"
-    exit 1
-fi
-
-# Check if it's a Git project or Doc project
-if [[ "$PROJECT" == *"/"* ]]; then
-    # Git project
-    PROJECT_PATH="$PROJECTS_DIR/$PROJECT"
-    if [ -d "$PROJECT_PATH" ]; then
-        echo "🔄 Switching to Git project: $PROJECT"
-        cd "$PROJECT_PATH"
-        git status 2>/dev/null || echo "Not a Git repository"
-    else
-        echo "❌ Project not found: $PROJECT_PATH"
-        exit 1
-    fi
-else
-    # Doc project
-    PROJECT_PATH="$DOCS_DIR/$PROJECT"
-    if [ -d "$PROJECT_PATH" ]; then
-        echo "📁 Opening documentation project: $PROJECT"
-        cd "$PROJECT_PATH"
-        ls -la
-    else
-        echo "❌ Project not found: $PROJECT_PATH"
-        exit 1
-    fi
-fi
+[ -n "$PROJECT" ] && [ -d "$PROJECT" ] || { echo "Nincs kiválasztott projekt" >&2; exit 1; }
+echo "$PROJECT"

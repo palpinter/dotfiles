@@ -1,38 +1,27 @@
 #!/bin/bash
-# Show Git status for all repositories
-
-set -e
-
+# Show Git status for all repositories under ~/Kódtár/aktiv/<account>/<repo>
 PROJECTS_DIR="$HOME/Kódtár/aktiv"
 
 echo "🔍 Git Status - All Repositories"
 echo "================================="
 
 for account_dir in "$PROJECTS_DIR"/*/; do
-    if [ -d "$account_dir" ]; then
-        account=$(basename "$account_dir")
-        echo ""
-        echo "📂 $account"
-        echo "$(printf '%.0s-' {1..40})"
-
-        for project_dir in "$account_dir"*/; do
-            if [ -d "$project_dir" ]; then
-                project=$(basename "$project_dir")
-                echo -n "  $project: "
-
-                cd "$project_dir"
-                if [ -d ".git" ]; then
-                    # Check if repository is clean
-                    if git diff-index --quiet HEAD -- 2>/dev/null; then
-                        echo "✅ Clean"
-                    else
-                        echo "⚠️  Changes"
-                        git status --porcelain | sed 's/^/    /'
-                    fi
-                else
-                    echo "❌ Not a Git repository"
-                fi
-            fi
-        done
-    fi
+    echo ""
+    echo "📂 $(basename "$account_dir")"
+    for project_dir in "$account_dir"*/; do
+        [ -d "$project_dir" ] || continue
+        printf '  %s: ' "$(basename "$project_dir")"
+        if ! git -C "$project_dir" rev-parse --git-dir &>/dev/null; then
+            echo "❌ Not a Git repository"
+            continue
+        fi
+        changes=$(git -C "$project_dir" status --porcelain)   # includes untracked files
+        ahead=$(git -C "$project_dir" rev-list --count @{u}..HEAD 2>/dev/null || echo "?")
+        if [ -z "$changes" ]; then
+            echo "✅ Clean (unpushed: $ahead)"
+        else
+            echo "⚠️  Changes (unpushed: $ahead)"
+            echo "$changes" | sed 's/^/    /'
+        fi
+    done
 done

@@ -60,23 +60,26 @@ git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 ### Deploy Dotfiles
 
-Using GNU Stow (recommended):
+Using GNU Stow:
 
 ```bash
-cd dotfiles
-stow zsh
-stow tmux
-stow gitconfig
-stow starship
-# ... repeat for other configs
-```
+cd ~/Kódtár/aktiv/github-pal-pinter/dotfiles
 
-Or symlink manually:
-
-```bash
-ln -sf ~/dotfiles/zsh/.zshrc ~/.zshrc
-ln -sf ~/dotfiles/tmux/.tmux.conf ~/.tmux.conf
+# Remove existing files/symlinks first
+rm -f ~/.zshrc ~/.zshenv ~/.zprofile
+rm -f ~/.tmux.conf
+rm -f ~/.gitconfig
 # ... etc
+
+# Install with stow (specify -t ~ as target)
+stow -t ~ zsh
+stow -t ~ tmux
+stow -t ~ gitconfig
+stow -t ~ starship
+stow -t ~ bash
+stow -t ~ alacritty
+stow -t ~ wezterm
+stow -t ~ zellij
 ```
 
 After deployment:
@@ -88,6 +91,8 @@ chsh -s $(which zsh)
 # Install tmux plugins
 tmux source ~/.tmux.conf
 # Press prefix + I (Ctrl+Space + Shift+I) to install plugins
+
+# Restart terminal
 ```
 
 ## Configuration Highlights

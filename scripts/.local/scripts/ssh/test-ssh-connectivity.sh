@@ -1,29 +1,34 @@
 #!/bin/bash
-# Test SSH connectivity to all services
+# Test SSH connectivity to VPS, Git platforms and the other machines
+O=(-o BatchMode=yes -o ConnectTimeout=8)
 
 echo "🔗 Testing SSH Connectivity"
 echo "============================"
 
 echo ""
-echo "📡 Testing VPS connection..."
-ssh -o ConnectTimeout=5 palpinter@murakami "echo 'VPS connection: ✅ OK'" || echo "VPS connection: ❌ FAILED"
+echo "📡 VPS:"
+ssh "${O[@]}" murakami true 2>/dev/null && echo "  murakami: ✅ OK" || echo "  murakami: ❌ FAILED"
 
 echo ""
-echo "🐙 Testing GitHub connections..."
-ssh -T git@github.com 2>&1 | grep -q "successfully authenticated" && echo "GitHub: ✅ OK" || echo "GitHub: ❌ Check keys"
+echo "🐙🦊 Git platforms:"
+for h in github-pal-pinter github-pinter-pal-orgware gitlab-pal-pinter gitlab-pinter-pal; do
+    out=$(ssh "${O[@]}" -T "$h" 2>&1)
+    if echo "$out" | grep -qE "successfully authenticated|Welcome to GitLab"; then
+        echo "  $h: ✅ $(echo "$out" | grep -oE 'Hi [^!]+|@[^!]+' | head -1)"
+    else
+        echo "  $h: ❌ $(echo "$out" | tail -1)"
+    fi
+done
 
 echo ""
-echo "🦊 Testing GitLab connections..."
-ssh -T git@gitlab.com 2>&1 | grep -q "Welcome to GitLab" && echo "GitLab: ✅ OK" || echo "GitLab: ❌ Check keys"
-
-echo ""
-echo "🏠 Testing inter-machine connectivity..."
-for host in wittgenstein monteverdi siddhartha gadamer kierkegaard puccini; do
-    if [ "$host" != "$(hostname)" ]; then
-        if ping -c 1 "$host.local" &> /dev/null; then
-            ssh -o ConnectTimeout=3 "palpinter@$host.local" "echo '$host: ✅ OK'" 2>/dev/null || echo "$host: ⚠️  SSH failed"
-        else
-            echo "$host: ⚠️  Not reachable"
-        fi
+echo "🏠 Inter-machine (Tailscale):"
+for host in wittgenstein monteverdi siddhartha gadamer russel claude-pc dev-server; do
+    [ "$host" = "$(hostname)" ] && continue
+    if ! getent hosts "$host" &>/dev/null; then
+        echo "  $host: ⚠️  not in tailnet"
+    elif ssh "${O[@]}" "$host" true 2>/dev/null; then
+        echo "  $host: ✅ OK"
+    else
+        echo "  $host: ⚠️  SSH failed (key not authorised or sshd down)"
     fi
 done
