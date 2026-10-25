@@ -19,19 +19,16 @@ log "Machine: $HOSTNAME"
 log "Date: $(date)"
 log ""
 
-# Tier 1: VPS
-log "📡 Tier 1: VPS Backup"
+# Tier 1: murakami – Git mirror of every repository under ~/Kódtár/aktiv (bare repos in /var/git/<account>/).
+# The working trees are not rsynced any more: everything committed is in the mirror, documents travel via Syncthing.
+log "📡 Tier 1: VPS – Git mirror"
 if ssh "${SSH_OPTS[@]}" murakami true 2>/dev/null; then
-    if rsync -az --delete --mkpath \
-        --exclude='.git/' --exclude='node_modules/' --exclude='target/' \
-        --exclude='build/' --exclude='dist/' --exclude='.venv/' \
-        ~/Kódtár/ \
-        "murakami:.local/backups/tier1-continuous/clients/$HOSTNAME/Kódtár/" >> "$BACKUP_LOG" 2>&1; then
-        log "✅ VPS backup completed"
+    if "$HOME/.local/scripts/project/git-backup-to-vps.sh" >> "$BACKUP_LOG" 2>&1; then
+        log "✅ Git mirror on murakami up to date ($(grep -c 'BACKUP: .* - success' "$BACKUP_LOG") repos)"
     else
-        log "❌ VPS backup failed (see log)"; RC=1
+        log "❌ Git mirror reported problems (conflicts or errors – see log)"; RC=1
     fi
-    log "📁 XDG directories are synced via Syncthing (real-time)"
+    log "📁 Documents are synced to murakami by Syncthing (real-time, versioned there)"
 else
     log "❌ VPS not reachable"; RC=1
 fi

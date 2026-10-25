@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily multi-tier backup at 02:00 (catches up after boot)
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+OnBootSec=10min
+
+[Install]
+WantedBy=timers.target

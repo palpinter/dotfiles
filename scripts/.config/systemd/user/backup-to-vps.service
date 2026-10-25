@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily multi-tier backup (Git mirror to murakami, NAS snapshot where mounted)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/scripts/backup/multi-tier-backup.sh
+StandardOutput=journal
+StandardError=journal

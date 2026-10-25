@@ -3,7 +3,7 @@
 
 set -e
 
-VPS_HOST="palpinter@murakami"
+VPS_HOST="murakami"
 KODTAR_BASE="$HOME/Kódtár"
 LOGFILE="$HOME/.local/backups/logs/git-backup-$(date +%Y%m%d).log"
 
@@ -102,10 +102,9 @@ backup_repository() {
 
     cd "$repo_path"
 
-    # Check for uncommitted changes
+    # Uncommitted changes are only a warning: --mirror pushes refs, the committed state is still worth backing up
     if [[ -n $(git status --porcelain) ]]; then
-        show_status "WARN" "$account/$repo_name" "Uncommitted changes - skipping"
-        return 0
+        show_status "WARN" "$account/$repo_name" "Uncommitted changes in working tree (mirroring committed state)"
     fi
 
     # Skip if no commits
