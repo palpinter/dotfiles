@@ -8,7 +8,7 @@ SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10)
 NAS_MOUNT="/srv/nas"            # QNAP 192.168.50.30:/Backup – mounted (systemd automount) on gadamer only
 NAS_ROOT="$NAS_MOUNT/backups"
 NAS_KEEP=30                     # daily snapshots to keep per machine
-XDG_DIRS=(Dokumentumok Képek Videók Zenék)
+XDG_DIRS=(Dokumentumok Képek Könyvek)   # irreplaceable data only; Videók/Zenék live on the NAS shares, not synced
 RC=0
 
 log() { echo "$*" | tee -a "$BACKUP_LOG"; }
