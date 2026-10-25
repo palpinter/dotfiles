@@ -138,9 +138,10 @@ backup_repository() {
     fi
 
     # Backup to VPS
-    # Fast-forward only (no --mirror): a clone that is behind another machine's push must not rewind the mirror
+    # Fast-forward only (no --mirror): a clone that is behind another machine's push must not rewind the mirror.
+    # GIT_LFS_SKIP_PUSH: the bare repos on murakami have no LFS server – pointers are mirrored, LFS blobs stay on the origin.
     local out
-    if out=$(git push vps-backup --all 2>&1) && out="$out"$'\n'$(git push vps-backup --tags 2>&1); then
+    if out=$(GIT_LFS_SKIP_PUSH=1 git push vps-backup --all 2>&1) && out="$out"$'\n'$(GIT_LFS_SKIP_PUSH=1 git push vps-backup --tags 2>&1); then
         show_status "OK" "$account/$repo_name" "Backed up to VPS"
         log "BACKUP: $account/$repo_name - success"
         return 0
