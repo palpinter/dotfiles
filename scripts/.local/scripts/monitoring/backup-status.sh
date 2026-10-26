@@ -26,6 +26,14 @@ if mountpoint -q /srv/nas; then
 else
     echo "  (not mounted on this machine)"
 fi
+
+echo "👩 anita-pc borg archives (/srv/nas-anita):"
+if [ -f /srv/nas-anita/config ]; then
+    BORG_REPO=/srv/nas-anita BORG_PASSCOMMAND="cat $HOME/.config/borg/anita-passphrase" borg list --last 3 \
+        --format '  {archive}  {time}{NL}' 2>/dev/null || echo "  (borg repo not readable)"
+else
+    echo "  (not mounted on this machine)"
+fi
 echo ""
 
 echo "📄 Recent Backup Logs:"

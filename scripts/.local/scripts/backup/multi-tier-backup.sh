@@ -9,6 +9,8 @@ NAS_MOUNT="/srv/nas"            # QNAP 192.168.50.30:/Backup – mounted (system
 NAS_ROOT="$NAS_MOUNT/backups"
 BORG_PATTERNS="$HOME/.config/borg/patterns.lst"   # what tier 2 backs up (roots + excludes), see the client guide 8.2
 BORG_PASSFILE="$HOME/.config/borg/passphrase"     # also in the vault: backup/borg-gadamer-nas.txt
+ANITA_REPO="/srv/nas-anita"                          # anita-pc pushes here (append-only via ssh); we prune/compact/check it
+ANITA_PASSFILE="$HOME/.config/borg/anita-passphrase" # also in the vault: backup/borg-anita-pc-nas.txt
 RC=0
 
 log() { echo "$*" | tee -a "$BACKUP_LOG"; }
@@ -53,6 +55,25 @@ if mountpoint -q "$NAS_MOUNT"; then
         if borg check >> "$BACKUP_LOG" 2>&1; then log "  ✅ monthly borg check"; else log "  ❌ borg check FAILED"; RC=1; fi
     fi
     log "✅ NAS archives: $(borg list --short --last 3 2>/dev/null | tr '\n' ' ')"
+
+    # anita-pc repo: the client only creates archives (append-only key), retention is enforced here
+    if [ -f "$ANITA_PASSFILE" ] && [ -f "$ANITA_REPO/config" ]; then
+        export BORG_REPO="$ANITA_REPO" BORG_PASSCOMMAND="cat $ANITA_PASSFILE"
+        if borg with-lock "$ANITA_REPO" true 2>/dev/null; then
+            if borg prune --glob-archives "anita-pc-*" --keep-daily 7 --keep-weekly 4 --keep-monthly 6 >> "$BACKUP_LOG" 2>&1 \
+               && borg compact >> "$BACKUP_LOG" 2>&1; then
+                log "  ✅ anita-pc prune 7d/4w/6m + compact"
+            else
+                log "  ❌ anita-pc prune/compact failed (see log)"; RC=1
+            fi
+            if [ "$(date +%d)" = "01" ]; then
+                if borg check >> "$BACKUP_LOG" 2>&1; then log "  ✅ anita-pc monthly borg check"; else log "  ❌ anita-pc borg check FAILED"; RC=1; fi
+            fi
+        else
+            log "  ℹ️  anita-pc repo is locked (backup in progress) – maintenance skipped today"
+        fi
+        log "✅ anita-pc archives: $(borg list --short --last 3 2>/dev/null | tr '\n' ' ')"
+    fi
 else
     log "ℹ️  No NAS mounted on this machine – gadamer backs up its Syncthing copies of the XDG folders for everyone"
 fi
