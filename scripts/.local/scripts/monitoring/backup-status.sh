@@ -18,9 +18,10 @@ else
 fi
 echo ""
 
-echo "🏠 NAS Snapshots (/srv/nas):"
+echo "🏠 NAS borg archives (/srv/nas/backups):"
 if mountpoint -q /srv/nas; then
-    ls -1 "/srv/nas/backups/snapshots/$(hostname)" 2>/dev/null | grep -v latest | tail -3 | sed 's/^/  /'
+    BORG_REPO=/srv/nas/backups BORG_PASSCOMMAND="cat $HOME/.config/borg/passphrase" borg list --last 3 \
+        --format '  {archive}  {time}{NL}' 2>/dev/null || echo "  (borg repo not readable)"
     df -h /srv/nas | tail -1 | awk '{print "  free: "$4" of "$2}'
 else
     echo "  (not mounted on this machine)"
