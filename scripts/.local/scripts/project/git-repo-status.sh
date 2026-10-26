@@ -19,7 +19,7 @@ while IFS= read -r repo; do
     [ "$d" -gt 0 ] && { dirty=$((dirty + 1)); echo "⚠️  $account/$name: $d uncommitted change(s)"; }
     origin=$(git -C "$repo" remote get-url origin 2>/dev/null || true)
     case "$origin" in
-        *github.com*|*gitlab.com*)
+        *github.com*|*gitlab.com*|*@github-*|*@gitlab-*)   # also the SSH host aliases from the shared ssh config (client guide 4.2)
             u=$(git -C "$repo" log --branches --not --remotes=origin --oneline 2>/dev/null | wc -l)
             if [ "$u" -gt 0 ]; then unpushed=$((unpushed + 1)); echo "⚠️  $account/$name: $u commit(s) not pushed to origin (not yet in the Forgejo mirror)"; log "UNPUSHED $account/$name $u"
             else covered=$((covered + 1)); fi ;;
