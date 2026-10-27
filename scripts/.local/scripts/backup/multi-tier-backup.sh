@@ -59,7 +59,12 @@ if mountpoint -q "$NAS_MOUNT"; then
     # anita-pc repo: the client only creates archives (append-only key), retention is enforced here
     if [ -f "$ANITA_PASSFILE" ] && [ -f "$ANITA_REPO/config" ]; then
         export BORG_REPO="$ANITA_REPO" BORG_PASSCOMMAND="cat $ANITA_PASSFILE"
-        if borg with-lock "$ANITA_REPO" true 2>/dev/null; then
+        # prune deletes *.checkpoint archives when no finished archive exists yet, which would throw away a
+        # resumable first run – so only maintain the repo when the newest archive is a finished one
+        ANITA_LAST="$(borg list --short --last 1 2>/dev/null)"
+        if [ -z "$ANITA_LAST" ] || [[ "$ANITA_LAST" == *.checkpoint ]]; then
+            log "  ℹ️  anita-pc: no finished archive yet (last: ${ANITA_LAST:-none}) – maintenance skipped"
+        elif borg with-lock "$ANITA_REPO" true 2>/dev/null; then
             if borg prune --glob-archives "anita-pc-*" --keep-daily 7 --keep-weekly 4 --keep-monthly 6 >> "$BACKUP_LOG" 2>&1 \
                && borg compact >> "$BACKUP_LOG" 2>&1; then
                 log "  ✅ anita-pc prune 7d/4w/6m + compact"
